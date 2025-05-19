@@ -46,7 +46,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
   useEffect(() => {
     const loadFriends = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/friends', {
+        const response = await axios.get('http://150.241.101.108:8000/friends', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setFriends(response.data);
@@ -57,7 +57,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
 
     const loadChats = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/chats', {
+        const response = await axios.get('http://150.241.101.108:8000/chats', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setChats(response.data);
@@ -75,11 +75,11 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
     if (!newFriendUsername.trim()) return;
     
     try {
-      await axios.post(`http://localhost:8000/friends/add/${newFriendUsername}`, {}, {
+      await axios.post(`http://150.241.101.108:8000/friends/add/${newFriendUsername}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNewFriendUsername('');
-      const response = await axios.get('http://localhost:8000/friends', {
+      const response = await axios.get('http://150.241.101.108:8000/friends', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setFriends(response.data);
@@ -91,10 +91,10 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
 
   const createChat = async (friendUsername: string) => {
     try {
-      const response = await axios.post(`http://localhost:8000/chats/create/${friendUsername}`, {}, {
+      const response = await axios.post(`http://150.241.101.108:8000/chats/create/${friendUsername}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const chatsResponse = await axios.get('http://localhost:8000/chats', {
+      const chatsResponse = await axios.get('http://150.241.101.108:8000/chats', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setChats(chatsResponse.data);
@@ -111,7 +111,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
   useEffect(() => {
     if (!selectedChat) return;
 
-    const wsUrl = `ws://localhost:8000/ws/${username}?token=${encodeURIComponent(token)}&chat_id=${selectedChat.id}`;
+    const wsUrl = `ws://150.241.101.108:8000/ws/${username}?token=${encodeURIComponent(token)}&chat_id=${selectedChat.id}`;
     
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 3;
@@ -179,7 +179,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
 
   const loadChatHistory = async (chatId: number) => {
     try {
-      const response = await axios.get(`http://localhost:8000/chats/${chatId}/messages`, {
+      const response = await axios.get(`http://150.241.101.108:8000/chats/${chatId}/messages`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
