@@ -34,6 +34,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
   const [error, setError] = useState('');
   const ws = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -182,7 +183,8 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
       const response = await axios.get(`http://150.241.101.108:8000/chats/${chatId}/messages`, {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        params: { limit: 0 }
       });
       setMessages(response.data);
     } catch (error) {
@@ -207,6 +209,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
           setChats(chatsResponse.data);
           if (chatsResponse.data.length > 0) {
             setSelectedChat(chatsResponse.data[0]);
+            loadChatHistory(chatsResponse.data[0].id);
           }
         } catch (error) {
           console.error('Error loading initial data:', error);
@@ -220,6 +223,12 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
     setSelectedChat(chat);
     setMessage('');
   };
+
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   return (
     <div className="chat-container">
