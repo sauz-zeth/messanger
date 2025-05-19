@@ -192,10 +192,29 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
   };
 
   useEffect(() => {
-    if (selectedChat) {
+    if (token && selectedChat) {
       loadChatHistory(selectedChat.id);
     }
-  }, [selectedChat, token]);
+  }, [token, selectedChat]);
+
+  useEffect(() => {
+    if (token) {
+      const loadInitialData = async () => {
+        try {
+          const chatsResponse = await axios.get('http://150.241.101.108:8000/chats', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setChats(chatsResponse.data);
+          if (chatsResponse.data.length > 0) {
+            setSelectedChat(chatsResponse.data[0]);
+          }
+        } catch (error) {
+          console.error('Error loading initial data:', error);
+        }
+      };
+      loadInitialData();
+    }
+  }, [token]);
 
   const handleChatSelect = (chat: ChatRoom) => {
     setSelectedChat(chat);
