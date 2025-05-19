@@ -194,12 +194,6 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
   };
 
   useEffect(() => {
-    if (token && selectedChat) {
-      loadChatHistory(selectedChat.id);
-    }
-  }, [token, selectedChat]);
-
-  useEffect(() => {
     if (token) {
       const loadInitialData = async () => {
         try {
@@ -208,8 +202,9 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
           });
           setChats(chatsResponse.data);
           if (chatsResponse.data.length > 0) {
-            setSelectedChat(chatsResponse.data[0]);
-            loadChatHistory(chatsResponse.data[0].id);
+            const firstChat = chatsResponse.data[0];
+            setSelectedChat(firstChat);
+            await loadChatHistory(firstChat.id);
           }
         } catch (error) {
           console.error('Error loading initial data:', error);
@@ -218,6 +213,12 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
       loadInitialData();
     }
   }, [token]);
+
+  useEffect(() => {
+    if (token && selectedChat) {
+      loadChatHistory(selectedChat.id);
+    }
+  }, [selectedChat]);
 
   const handleChatSelect = (chat: ChatRoom) => {
     setSelectedChat(chat);
