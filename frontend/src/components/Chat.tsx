@@ -54,24 +54,25 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setFriends(response.data);
-      } catch (error) {
-        console.error('Error loading friends:', error);
-      }
-    };
-
-    const loadChats = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/chats`, {
+        // После загрузки друзей загружаем чаты
+        const chatsResponse = await axios.get(`${API_URL}/chats`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setChats(response.data);
+        setChats(chatsResponse.data);
+        // Если есть чаты, выбираем первый и загружаем его историю
+        if (chatsResponse.data.length > 0) {
+          const firstChat = chatsResponse.data[0];
+          setSelectedChat(firstChat);
+          await loadChatHistory(firstChat.id);
+        }
       } catch (error) {
-        console.error('Error loading chats:', error);
+        console.error('Error loading initial data:', error);
       }
     };
 
-    loadFriends();
-    loadChats();
+    if (token) {
+      loadFriends();
+    }
   }, [token]);
 
   const addFriend = async (e: React.FormEvent) => {
@@ -253,31 +254,10 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
   };
 
   useEffect(() => {
-    if (token) {
-      const loadInitialData = async () => {
-        try {
-          const chatsResponse = await axios.get(`${API_URL}/chats`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setChats(chatsResponse.data);
-          if (chatsResponse.data.length > 0) {
-            const firstChat = chatsResponse.data[0];
-            setSelectedChat(firstChat);
-            await loadChatHistory(firstChat.id);
-          }
-        } catch (error) {
-          console.error('Error loading initial data:', error);
-        }
-      };
-      loadInitialData();
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token && selectedChat) {
+    if (token && selectedChat && friends.length > 0) {
       loadChatHistory(selectedChat.id);
     }
-  }, [selectedChat]);
+  }, [selectedChat, friends.length]);
 
   const handleChatSelect = (chat: ChatRoom) => {
     setSelectedChat(chat);
