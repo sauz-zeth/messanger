@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Chat from './components/Chat';
 import axios from 'axios';
+import { API_URL } from './config';
 import './App.css';
 
 function App() {
@@ -13,7 +14,7 @@ function App() {
     const savedToken = localStorage.getItem('token');
     if (savedToken) {
       // Проверяем валидность токена
-      axios.get('http://localhost:8000/friends', {
+      axios.get(`${API_URL}/friends`, {
         headers: {
           'Authorization': `Bearer ${savedToken}`
         }
@@ -38,7 +39,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await axios.post('http://localhost:8000/logout', {}, {
+      await axios.post(`${API_URL}/logout`, {}, {
         headers: {
           'Authorization': `Bearer ${token}`
         },

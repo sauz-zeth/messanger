@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { API_URL, WS_URL } from '../config';
 
 interface Message {
-  sender: string;
+  id?: number;          // ID сообщения из БД
+  sender_id?: number;   // ID автора (для истории)
+  sender: string;       // Имя автора для отображения
   content: string;
   timestamp: string;
 }
@@ -47,7 +50,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
   useEffect(() => {
     const loadFriends = async () => {
       try {
-        const response = await axios.get('http://150.241.101.108:8000/friends', {
+        const response = await axios.get(`${API_URL}/friends`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setFriends(response.data);
@@ -58,7 +61,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
 
     const loadChats = async () => {
       try {
-        const response = await axios.get('http://150.241.101.108:8000/chats', {
+        const response = await axios.get(`${API_URL}/chats`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setChats(response.data);
@@ -76,26 +79,36 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
     if (!newFriendUsername.trim()) return;
     
     try {
-      await axios.post(`http://150.241.101.108:8000/friends/add/${newFriendUsername}`, {}, {
+      await axios.post(`${API_URL}/friends/add/${newFriendUsername}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNewFriendUsername('');
-      const response = await axios.get('http://150.241.101.108:8000/friends', {
+      const response = await axios.get(`${API_URL}/friends`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setFriends(response.data);
     } catch (error) {
-      console.error('Error adding friend:', error);
-      setError('Не удалось добавить друга. Проверьте имя пользователя и попробуйте снова.');
+      // Enhanced error details for 400 responses
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (axios.isAxiosError(error) && error.response?.status === 400) {
+        const backendMessage =
+          typeof error.response.data?.detail === 'string'
+            ? error.response.data.detail
+            : 'Не удалось добавить друга. Проверьте имя пользователя и попробуйте снова.';
+        setError(backendMessage);
+      } else {
+        console.error('Error adding friend:', error);
+        setError('Не удалось добавить друга. Попробуйте снова.');
+      }
     }
   };
 
   const createChat = async (friendUsername: string) => {
     try {
-      const response = await axios.post(`http://150.241.101.108:8000/chats/create/${friendUsername}`, {}, {
+      const response = await axios.post(`${API_URL}/chats/create/${friendUsername}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const chatsResponse = await axios.get('http://150.241.101.108:8000/chats', {
+      const chatsResponse = await axios.get(`${API_URL}/chats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setChats(chatsResponse.data);
@@ -112,7 +125,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
   useEffect(() => {
     if (!selectedChat) return;
 
-    const wsUrl = `ws://150.241.101.108:8000/ws/${username}?token=${encodeURIComponent(token)}&chat_id=${selectedChat.id}`;
+    const wsUrl = `${WS_URL}/ws/${username}?token=${encodeURIComponent(token)}&chat_id=${selectedChat.id}`;
     
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 3;
@@ -139,8 +152,6 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
             reconnectAttempts++;
             connectWebSocket();
           }, reconnectDelay);
-        } else {
-          setError('Соединение потеряно. Пожалуйста, обновите страницу.');
         }
       };
 
@@ -180,13 +191,19 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
 
   const loadChatHistory = async (chatId: number) => {
     try {
-      const response = await axios.get(`http://150.241.101.108:8000/chats/${chatId}/messages`, {
+      const response = await axios.get(`${API_URL}/chats/${chatId}/messages`, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
         params: { limit: 0 }
       });
-      setMessages(response.data);
+      // Преобразуем сообщения, чтобы добавить поле sender (username)
+      const history: Message[] = response.data.map((msg: any) => {
+        const friend = friends.find(f => f.id === msg.sender_id);
+        const senderName = friend ? friend.username : username;
+        return { ...msg, sender: senderName };
+      });
+      setMessages(history);
     } catch (error) {
       console.error('Error loading chat history:', error);
       setError('Не удалось загрузить историю сообщений');
@@ -197,7 +214,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
     if (token) {
       const loadInitialData = async () => {
         try {
-          const chatsResponse = await axios.get('http://150.241.101.108:8000/chats', {
+          const chatsResponse = await axios.get(`${API_URL}/chats`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           setChats(chatsResponse.data);

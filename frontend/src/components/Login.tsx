@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 interface LoginProps {
     onLogin: (username: string, token: string) => void;
@@ -17,7 +18,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         try {
             if (isRegistering) {
                 // Регистрация
-                await axios.post('http://localhost:8000/register', {
+                await axios.post(`${API_URL}/register`, {
                     username,
                     email,
                     password
@@ -25,7 +26,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             }
             
             // Вход
-            const response = await axios.post('http://localhost:8000/token', 
+            const response = await axios.post(`${API_URL}/token`, 
                 `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
                 {
                     headers: {

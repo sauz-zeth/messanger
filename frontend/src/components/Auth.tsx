@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { API_URL } from '../config';
 
 interface AuthProps {
   onAuth: (username: string, token: string) => void;
@@ -14,7 +15,7 @@ export const Auth = ({ onAuth }: AuthProps) => {
     e.preventDefault();
     
     try {
-      const url = isLogin ? 'http://localhost:8000/token' : 'http://localhost:8000/register';
+      const url = isLogin ? `${API_URL}/token` : `${API_URL}/register`;
       const body = isLogin 
         ? new URLSearchParams({ username, password })
         : JSON.stringify({ username, email, password });
@@ -36,7 +37,7 @@ export const Auth = ({ onAuth }: AuthProps) => {
         onAuth(username, data.access_token);
       } else {
         setIsLogin(true);
-        alert('Registration successful. Please login with your credentials.');
+        alert('Registration succssful. Please login with your credentials.');
       }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Something went wrong');
