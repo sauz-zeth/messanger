@@ -50,27 +50,35 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
   useEffect(() => {
     const loadFriends = async () => {
       try {
+        console.log('Начало загрузки друзей...');
         const response = await axios.get(`${API_URL}/friends`, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        console.log('Загруженные друзья:', response.data);
         setFriends(response.data);
-        // После загрузки друзей загружаем чаты
+        
+        console.log('Начало загрузки чатов...');
         const chatsResponse = await axios.get(`${API_URL}/chats`, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        console.log('Загруженные чаты:', chatsResponse.data);
         setChats(chatsResponse.data);
-        // Если есть чаты, выбираем первый и загружаем его историю
+        
         if (chatsResponse.data.length > 0) {
           const firstChat = chatsResponse.data[0];
+          console.log('Выбран первый чат:', firstChat);
           setSelectedChat(firstChat);
           await loadChatHistory(firstChat.id);
+        } else {
+          console.log('Нет доступных чатов');
         }
       } catch (error) {
-        console.error('Error loading initial data:', error);
+        console.error('Ошибка при загрузке начальных данных:', error);
       }
     };
 
     if (token) {
+      console.log('Токен получен, начинаем загрузку данных...');
       loadFriends();
     }
   }, [token]);
@@ -210,6 +218,9 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
 
   const loadChatHistory = async (chatId: number) => {
     try {
+      console.log('Загрузка истории чата:', chatId);
+      console.log('Текущий список друзей:', friends);
+      
       const response = await axios.get(`${API_URL}/chats/${chatId}/messages`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -217,26 +228,29 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
         params: { limit: 0 }
       });
       
-      // Получаем ID текущего пользователя из токена
       const tokenPayload = JSON.parse(atob(token.split('.')[1]));
       const currentUserId = tokenPayload.sub;
       
-      console.log('Текущий пользователь:', { username, currentUserId });
-      console.log('Полученные сообщения:', response.data);
-      console.log('Список друзей:', friends);
+      console.log('Данные для обработки сообщений:', {
+        username,
+        currentUserId,
+        friendsCount: friends.length,
+        messagesCount: response.data.length
+      });
       
-      // Преобразуем сообщения, чтобы добавить поле sender (username)
       const history: Message[] = response.data.map((msg: any) => {
-        // Если sender_id совпадает с текущим пользователем, значит это его сообщение
         const isCurrentUser = msg.sender_id === currentUserId;
-        const senderName = isCurrentUser ? username : friends.find(f => f.id === msg.sender_id)?.username || 'Неизвестный';
+        const friend = friends.find(f => f.id === msg.sender_id);
+        const senderName = isCurrentUser ? username : (friend?.username || 'Неизвестный');
         
         console.log('Обработка сообщения:', {
-          msg,
-          isCurrentUser,
-          senderName,
+          messageId: msg.id,
           sender_id: msg.sender_id,
-          currentUserId
+          currentUserId,
+          isCurrentUser,
+          friendFound: !!friend,
+          senderName,
+          content: msg.content
         });
         
         return { 
@@ -245,17 +259,28 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
         };
       });
       
-      console.log('Обработанная история:', history);
+      console.log('Итоговая история сообщений:', history);
       setMessages(history);
     } catch (error) {
-      console.error('Error loading chat history:', error);
+      console.error('Ошибка при загрузке истории чата:', error);
       setError('Не удалось загрузить историю сообщений');
     }
   };
 
   useEffect(() => {
     if (token && selectedChat && friends.length > 0) {
+      console.log('Условия для загрузки истории выполнены:', {
+        hasToken: !!token,
+        selectedChatId: selectedChat?.id,
+        friendsCount: friends.length
+      });
       loadChatHistory(selectedChat.id);
+    } else {
+      console.log('Условия для загрузки истории не выполнены:', {
+        hasToken: !!token,
+        selectedChatId: selectedChat?.id,
+        friendsCount: friends.length
+      });
     }
   }, [selectedChat, friends.length]);
 
