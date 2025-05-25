@@ -1,7 +1,7 @@
 {
-  "name": "messenger",
+  "name": "chat-messenger",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -33,7 +33,7 @@
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5"
   },
-  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "description": "Современный мессенджер для общения в реальном времени",
   "main": "eslint.config.js",
   "keywords": [],
   "author": "",
