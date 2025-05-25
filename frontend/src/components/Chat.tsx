@@ -197,11 +197,18 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
         },
         params: { limit: 0 }
       });
+      // Получаем ID текущего пользователя из токена
+      const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+      const currentUserId = tokenPayload.sub;
+      
       // Преобразуем сообщения, чтобы добавить поле sender (username)
       const history: Message[] = response.data.map((msg: any) => {
-        const friend = friends.find(f => f.id === msg.sender_id);
-        const senderName = friend ? friend.username : username;
-        return { ...msg, sender: senderName };
+        // Если sender_id совпадает с текущим пользователем, значит это его сообщение
+        const isCurrentUser = msg.sender_id === currentUserId;
+        return { 
+          ...msg, 
+          sender: isCurrentUser ? username : friends.find(f => f.id === msg.sender_id)?.username || 'Неизвестный'
+        };
       });
       setMessages(history);
     } catch (error) {
