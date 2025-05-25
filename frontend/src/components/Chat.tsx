@@ -162,7 +162,25 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
       ws.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          setMessages(prev => [...prev, message]);
+          console.log('Получено WebSocket сообщение:', message);
+          
+          // Получаем ID текущего пользователя из токена
+          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+          const currentUserId = tokenPayload.sub;
+          
+          // Добавляем информацию об отправителе
+          const isCurrentUser = message.sender_id === currentUserId;
+          const senderName = isCurrentUser ? username : friends.find(f => f.id === message.sender_id)?.username || 'Неизвестный';
+          
+          console.log('Обработка WebSocket сообщения:', {
+            message,
+            isCurrentUser,
+            senderName,
+            sender_id: message.sender_id,
+            currentUserId
+          });
+          
+          setMessages(prev => [...prev, { ...message, sender: senderName }]);
         } catch (error) {
           console.error('Error parsing message:', error);
         }
@@ -197,19 +215,36 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
         },
         params: { limit: 0 }
       });
+      
       // Получаем ID текущего пользователя из токена
       const tokenPayload = JSON.parse(atob(token.split('.')[1]));
       const currentUserId = tokenPayload.sub;
+      
+      console.log('Текущий пользователь:', { username, currentUserId });
+      console.log('Полученные сообщения:', response.data);
+      console.log('Список друзей:', friends);
       
       // Преобразуем сообщения, чтобы добавить поле sender (username)
       const history: Message[] = response.data.map((msg: any) => {
         // Если sender_id совпадает с текущим пользователем, значит это его сообщение
         const isCurrentUser = msg.sender_id === currentUserId;
+        const senderName = isCurrentUser ? username : friends.find(f => f.id === msg.sender_id)?.username || 'Неизвестный';
+        
+        console.log('Обработка сообщения:', {
+          msg,
+          isCurrentUser,
+          senderName,
+          sender_id: msg.sender_id,
+          currentUserId
+        });
+        
         return { 
           ...msg, 
-          sender: isCurrentUser ? username : friends.find(f => f.id === msg.sender_id)?.username || 'Неизвестный'
+          sender: senderName
         };
       });
+      
+      console.log('Обработанная история:', history);
       setMessages(history);
     } catch (error) {
       console.error('Error loading chat history:', error);
