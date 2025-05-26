@@ -22,7 +22,14 @@ app = FastAPI()
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Разрешаем все origins
+    allow_origins=[
+        "http://localhost:5173", 
+        "http://localhost:3000", 
+        "http://150.241.101.108",
+        "http://150.241.101.108:80",  # Добавляем порт 80
+        "http://150.241.101.108:443",  # Добавляем порт 443 для HTTPS
+        "https://150.241.101.108"  # Добавляем HTTPS
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],

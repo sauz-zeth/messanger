@@ -50,37 +50,28 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
   useEffect(() => {
     const loadFriends = async () => {
       try {
-        console.log('Начало загрузки друзей...');
         const response = await axios.get(`${API_URL}/friends`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        console.log('Загруженные друзья:', response.data);
         setFriends(response.data);
-        
-        console.log('Начало загрузки чатов...');
-        const chatsResponse = await axios.get(`${API_URL}/chats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        console.log('Загруженные чаты:', chatsResponse.data);
-        setChats(chatsResponse.data);
-        
-        if (chatsResponse.data.length > 0) {
-          const firstChat = chatsResponse.data[0];
-          console.log('Выбран первый чат:', firstChat);
-          setSelectedChat(firstChat);
-          await loadChatHistory(firstChat.id);
-        } else {
-          console.log('Нет доступных чатов');
-        }
       } catch (error) {
-        console.error('Ошибка при загрузке начальных данных:', error);
+        console.error('Error loading friends:', error);
       }
     };
 
-    if (token) {
-      console.log('Токен получен, начинаем загрузку данных...');
-      loadFriends();
-    }
+    const loadChats = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/chats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setChats(response.data);
+      } catch (error) {
+        console.error('Error loading chats:', error);
+      }
+    };
+
+    loadFriends();
+    loadChats();
   }, [token]);
 
   const addFriend = async (e: React.FormEvent) => {
@@ -171,25 +162,7 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
       ws.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('Получено WebSocket сообщение:', message);
-          
-          // Получаем ID текущего пользователя из токена
-          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-          const currentUserId = tokenPayload.sub;
-          
-          // Добавляем информацию об отправителе
-          const isCurrentUser = message.sender_id === currentUserId;
-          const senderName = isCurrentUser ? username : friends.find(f => f.id === message.sender_id)?.username || 'Неизвестный';
-          
-          console.log('Обработка WebSocket сообщения:', {
-            message,
-            isCurrentUser,
-            senderName,
-            sender_id: message.sender_id,
-            currentUserId
-          });
-          
-          setMessages(prev => [...prev, { ...message, sender: senderName }]);
+          setMessages(prev => [...prev, message]);
         } catch (error) {
           console.error('Error parsing message:', error);
         }
@@ -218,71 +191,59 @@ const Chat: React.FC<ChatProps> = ({ username, token }) => {
 
   const loadChatHistory = async (chatId: number) => {
     try {
-      console.log('Загрузка истории чата:', chatId);
-      console.log('Текущий список друзей:', friends);
-      
       const response = await axios.get(`${API_URL}/chats/${chatId}/messages`, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
         params: { limit: 0 }
       });
-      
+      // Получаем ID текущего пользователя из токена
       const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-      const currentUserId = tokenPayload.sub;
+      const currentUserId = parseInt(tokenPayload.sub);
       
-      console.log('Данные для обработки сообщений:', {
-        username,
-        currentUserId,
-        friendsCount: friends.length,
-        messagesCount: response.data.length
-      });
-      
+      // Преобразуем сообщения, чтобы добавить поле sender (username)
       const history: Message[] = response.data.map((msg: any) => {
-        const isCurrentUser = msg.sender_id === currentUserId;
+        // Если sender_id совпадает с текущим пользователем, используем его username
+        if (msg.sender_id === currentUserId) {
+          return { ...msg, sender: username };
+        }
+        // Иначе ищем имя отправителя среди друзей
         const friend = friends.find(f => f.id === msg.sender_id);
-        const senderName = isCurrentUser ? username : (friend?.username || 'Неизвестный');
-        
-        console.log('Обработка сообщения:', {
-          messageId: msg.id,
-          sender_id: msg.sender_id,
-          currentUserId,
-          isCurrentUser,
-          friendFound: !!friend,
-          senderName,
-          content: msg.content
-        });
-        
-        return { 
-          ...msg, 
-          sender: senderName
-        };
+        return { ...msg, sender: friend ? friend.username : 'Неизвестный пользователь' };
       });
-      
-      console.log('Итоговая история сообщений:', history);
       setMessages(history);
     } catch (error) {
-      console.error('Ошибка при загрузке истории чата:', error);
+      console.error('Error loading chat history:', error);
       setError('Не удалось загрузить историю сообщений');
     }
   };
 
   useEffect(() => {
-    if (token && selectedChat && friends.length > 0) {
-      console.log('Условия для загрузки истории выполнены:', {
-        hasToken: !!token,
-        selectedChatId: selectedChat?.id,
-        friendsCount: friends.length
-      });
-      loadChatHistory(selectedChat.id);
-    } else {
-      console.log('Условия для загрузки истории не выполнены:', {
-        hasToken: !!token,
-        selectedChatId: selectedChat?.id,
-        friendsCount: friends.length
-      });
+    if (token) {
+      const loadInitialData = async () => {
+        try {
+          const chatsResponse = await axios.get(`${API_URL}/chats`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setChats(chatsResponse.data);
+          if (chatsResponse.data.length > 0) {
+            const firstChat = chatsResponse.data[0];
+            setSelectedChat(firstChat);
+            await loadChatHistory(firstChat.id);
+          }
+        } catch (error) {
+          console.error('Error loading initial data:', error);
+        }
+      };
+      loadInitialData();
     }
-  }, [selectedChat, friends.length]);
+  }, [token]);
+
+  useEffect(() => {
+    if (token && selectedChat) {
+      loadChatHistory(selectedChat.id);
+    }
+  }, [selectedChat]);
 
   const handleChatSelect = (chat: ChatRoom) => {
     setSelectedChat(chat);
