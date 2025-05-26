@@ -22,6 +22,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     username,
                     email,
                     password
+                }, {
+                    withCredentials: true,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
             }
             
@@ -40,7 +45,20 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             onLogin(username, token);
         } catch (error) {
             console.error('Login error:', error);
-            setError(isRegistering ? 'Ошибка при регистрации' : 'Неверное имя пользователя или пароль');
+            if (axios.isAxiosError(error)) {
+                if (error.response) {
+                    // Ошибка от сервера
+                    setError(error.response.data.detail || (isRegistering ? 'Ошибка при регистрации' : 'Неверное имя пользователя или пароль'));
+                } else if (error.request) {
+                    // Запрос был отправлен, но нет ответа
+                    setError('Не удалось подключиться к серверу. Проверьте подключение к интернету.');
+                } else {
+                    // Ошибка при настройке запроса
+                    setError(isRegistering ? 'Ошибка при регистрации' : 'Неверное имя пользователя или пароль');
+                }
+            } else {
+                setError(isRegistering ? 'Ошибка при регистрации' : 'Неверное имя пользователя или пароль');
+            }
         }
     };
 

@@ -25,10 +25,11 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173", 
         "http://localhost:3000", 
+        "http://localhost:8000",  # Добавляем localhost:8000
         "http://150.241.101.108",
-        "http://150.241.101.108:80",  # Добавляем порт 80
-        "http://150.241.101.108:443",  # Добавляем порт 443 для HTTPS
-        "https://150.241.101.108"  # Добавляем HTTPS
+        "http://150.241.101.108:80",
+        "http://150.241.101.108:443",
+        "https://150.241.101.108"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
