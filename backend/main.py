@@ -22,7 +22,7 @@ app = FastAPI()
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://150.241.101.108", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
+    allow_origins=["*"],  # Разрешаем все origins
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -37,7 +37,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Настройки паролей
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 # Pydantic модели
 class UserCreate(BaseModel):
@@ -57,6 +57,36 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: str | None = None
+
+
+class MessageOut(BaseModel):
+    id: int
+    sender_id: int
+    chat_id: int
+    content: str
+    timestamp: datetime
+
+    class Config:
+        orm_mode = True
+
+
+# Basic output schemas
+class UserBasic(BaseModel):
+    id: int
+    username: str
+
+    class Config:
+        orm_mode = True
+
+
+class ChatOut(BaseModel):
+    id: int
+    name: str
+    is_private: bool
+    participants: List[UserBasic]
+
+    class Config:
+        orm_mode = True
 
 # Хранение активных соединений
 class ConnectionManager:
@@ -199,20 +229,27 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str, db: Session =
     try:
         while True:
             data = await websocket.receive_text()
+
+            # Сохраняем сообщение в БД
+            new_msg = models.Message(
+                content=data,
+                sender_id=user.id,
+                chat_id=chat_id
+            )
+            db.add(new_msg)
+            db.commit()
+            db.refresh(new_msg)
+
+            # Рассылаем сохранённое сообщение
             message = {
+                "id": new_msg.id,
                 "sender": username,
-                "content": data,
-                "timestamp": datetime.now().isoformat()
+                "content": new_msg.content,
+                "timestamp": new_msg.timestamp.isoformat()
             }
             await manager.broadcast(message, chat_id)
     except WebSocketDisconnect:
         manager.disconnect(websocket, client_id, chat_id)
-        message = {
-            "sender": "System",
-            "content": f"{username} left the chat",
-            "timestamp": datetime.now().isoformat()
-        }
-        await manager.broadcast(message, chat_id)
 
 @app.get("/")
 async def root():
@@ -223,8 +260,8 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(database.get_db)
 ):
-    if not token:
-        token = request.cookies.get("access_token")
+    # Если заголовка Authorization нет, пробуем взять токен из cookie
+    token = token or request.cookies.get("access_token")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -261,7 +298,7 @@ async def add_friend(
     db.commit()
     return {"message": f"Added {friend_username} as a friend"}
 
-@app.get("/friends")
+@app.get("/friends", response_model=List[UserBasic])
 async def get_friends(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
@@ -300,14 +337,14 @@ async def create_chat(
     
     return {"chat_id": chat.id, "message": "Chat created successfully"}
 
-@app.get("/chats")
+@app.get("/chats", response_model=List[ChatOut])
 async def get_chats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     return current_user.chats
 
-@app.get("/chats/{chat_id}/messages")
+@app.get("/chats/{chat_id}/messages", response_model=List[MessageOut])
 async def get_chat_messages(
     chat_id: int,
     current_user: User = Depends(get_current_user),
